@@ -33,164 +33,96 @@ noi@ucsb.edu
 * Approaches: 
     * physical-statistical models within hierarchical statistical framework (Berliner 2003; Kuhnert 2014)
     * black-box simulator (e.g. PDE and ABM)
-    * emulators (surrogate statistical model to emulate input-output, which is computationally less expensive to evaluate)
+    * **emulators** (surrogate statistical model to emulate input-output, which is computationally less expensive to evaluate)
 
+---
+
+<!-- _backgroundColor: black -->
+<!-- _color: #DC267F -->
+<!-- _class: lead -->
+
+# Emulators
+
+---
+
+# Emulators 
+
+> Emulator is a function that mimics the output of a simulator at a fraction of simulator's cost. Most frequently specified by Gaussian Processes, polynomial basis expansions, and non-linear surrogate models. 
+
+* Projecting the output onto a standard basis representation (principal components) and adapting emulators to lower-dimensional projection of these fields. 
+
+---
+
+# SVD Emulators
+
+- Hidgon et al. (2008) 
+    - SVD derived PCs of simulated runs and GP prior distribution on the weights 
+- Hidgon et al. (2011) 
+    - relax GP-based prior, model mean response via random-forests
+
+```Simulator output can be approximately expressed as a linear combination of the UD columns from SVD```
+
+---
+
+$$ C = U D V^T $$ 
+where $C$ is an $M \times N$ matrix (output dims, runs).  
+$$ c = U D v(\theta) + \epsilon $$
+where $\epsilon$ is a mean-zero residual with non-diagonal covariance matrix $\Sigma$,  $v(\theta)$ specifies the $N$ coefficients of the linear combination for a particular value of $\theta$. 
+$$ c = U D g(\theta, \beta) + \epsilon \quad \text{(non-linear regression)} $$
+where $\beta$ are tuning parameters, and $\theta$ are inferential parameters. 
+
+---
+
+# Computational savings: 
+
+1. use $r$ columns capturing most of the data variation from $UD$, 
+2. train $r$ machine learning models for emulator
+3. reduce computational time on function evaluation 
+
+---
+
+<!-- _backgroundColor: black -->
+<!-- _color: #DC267F -->
+<!-- _class: lead -->
+
+# Model formulation
+
+---
+
+* Emulate non-linear function $f(x, y, t, \theta_t, ... , \theta_p)$
+* Emulations stored as multidimensional tensor $\mathcal{X}$ $M$ by $N$ by $T$ by $P_1$ ... by $P_p$
+* latin hypercube is used for initial prior sampling 
+
+Then for HOSVD we have: 
+
+$$ f(x*, y*, t*, \theta*1,..., \theta*p) = Z \times u_1(x*) \times u_2(y*) \times u_3(t*) \times ... \times u_{p+3}(\theta*p) + \epsilon $$
+
+where $u_1, ... , u_p$ - are non-linear vector-valued functions (behaving like $v(\theta)$ from SVD). 
 
 --- 
-<!-- _class: lead -->
-<!-- _header: -->
-# Data
-# :floppy_disk:
+
+# Emulator Construction
+
+- Train supervised ML (e.g. GP regression) on $M$ values of $x$ and first column of $U_1$ to get $\hat{u}_{11}$. The choice of supervised ML method needs to be investigated. 
 
 ---
-# Safegraph 
-- Census block group level (~ 200k CBGs in the US).
-    - average_distance_from_home
-    - device_count
-    - completely_home_device_count
-    - etc. 
+<!-- _backgroundColor: black -->
+<!-- _color: #DC267F -->
 
----
-# Percent of people sheltered in place on March 1, 2020 and 
-![bg right:50% 175%](sg_march1.jpeg)  
-![bg left:100% 175%](sg_apr10.jpeg)
+## Algorithm: 
 
+1. Unfold and scale a tensor 
+2. Run regular SVD. Compare screeplot with SVD of permuted unfolded matrices. Keep $\psi$ singular vectors.
+3. For each tensor mode set truncated SVD rank at $\psi$ and adding 1 to account for scaling. 
+4. Calculate decomposition quality - prop of var explained by R (R - low rank approx, $X_c = X - \bar{X}$)
 
-
----
-# Cuebiq
-- County level (~ 3k counties in the US).
-    - sheltered_in_place
-    - cmi (Cuebiq mobility index)
-    - cci (Cuebiq contact index)
-    - etc. 
-
---- 
-![bg right:50% 175%](cub_march1.jpeg)  
-![bg left:100% 175%](cub_apr10.jpeg)
-
----
-![bg 100%](two_graphs.jpeg)
-
----
-![bg 100%](pct_compare.jpeg)
-
----
-![bg 100%](diff.jpeg)
-
----
-# Data pre-processing
-1. Create comparable metrics from Safegraph and Cuebiq (Jan 1, 2020 - Nov 15, 2020)
-2. Normalize metrics by baseline (Jan 15, 2020 - Feb 15, 2020) according to the geographical unit of analysis (county)
-3. Find differences between the metrics
-4. Scale down to make *ASSIST* calculations manageable 
-    - day --> week
-    - 2020-03-01 : 2020-06-20
-    - USA --> California (58 counties, centroids)
-
----
-![bg 115%](diff_ca2.jpeg)
-
-<!-- ---
-![bg](diff_pnt.jpeg) -->
-
----
-<!-- _class: lead -->
-# Methods
-# :memo:
-
----
-# Smoothing Spline ANOVA 
-* Decomposition of multivariation functions similar to classical analysis of variance. Notion of main effect and interaction. If no interaction - we have an additive model. 
-* Consider one-way ANOVA: $Y_{ij}=\mu_i + \epsilon_{ij}$, where $\mu_i$ are treatment means on treatment levels $i = 1,...,K$ and $\epsilon$ are independent normal errors. $\mu_i = \mu + \alpha_i$, where $\mu$ is the overall mean and $\alpha_i$ is the treatment effect. 
-
----
-# Smoothing Spline ANOVA
-* Recast to regression $Y_j = f(x_i) + \epsilon_j$, use the averaging operator $\mathcal{A}$ and identity operator $I$: 
-$$f(x) = \mathcal{A}f + (I-\mathcal{A}f) = f_0 + f_x$$
-
----
-# Analytical Framework
-* Decompose a tensor product (RKHS) $\mathcal{H}$ space into subspaces with hierarchical structure
-* Incorporate locational information as either ~~*region*~~ or *location (longitude, latitude)*  
-* Expected difference between the data sources as a function of both location $x_1$ and time $x_2$: $f(x_1, x_2)$ 
-* We model locational data with thin-plate spline $W_2^2(\mathbb{R}^2)$ and weeks via a ~~periodic~~ cubic spline space $W_2^2[0,1]$ 
-
----
-# Formulae
-* LOCATION EFFECT: 
-$\beta_1 \tilde{\phi_1}(x_1) + \beta_2 \tilde{\phi_2}(x_1) + f_1^s(x_1) + f_{12}^{ls}(x_1, x_2) + f_{12}^{ss}(x_1, x_2)$, where $\beta_1 \tilde{\phi_1}(x_1) + \beta_2 \tilde{\phi_2}(x_1)$ linear main effect of location, $f_1^s(x)1)$ smooth main effect, $f_{12}^{ls}(x_1, x_2)$ linear-smooth interaction of location and week, $f_{12}^{ss}(x_1, x_2)$ smooth-smooth interaction of location and week, 
-* WEEK EFFECT: 
-$f_2^s(x_2) + f_{12}^{ls}(x_1, x_2) + f_{12}^{ss}(x_1, x_2)$
-
---- 
-# Use ASSIST-package 
-
-```bash
-       ww       county_fips               lng.V1               lat.V1            differ      
- Min.   :0.34   Length:986         Min.   :-1.6626787   Min.   :-2.2599596   Min.   :-52.08  
- 1st Qu.:0.50   Class :character   1st Qu.:-0.6886820   1st Qu.:-0.5823764   1st Qu.:  2.13  
- Median :0.66   Mode  :character   Median :-0.0998438   Median : 0.0964426   Median : 14.75  
- Mean   :0.66                      Mean   : 0.0000000   Mean   : 0.0000000   Mean   : 17.83  
- 3rd Qu.:0.82                      3rd Qu.: 0.4759073   3rd Qu.: 0.6686480   3rd Qu.: 30.99  
- Max.   :0.98                      Max.   : 2.8129625   Max.   : 1.8309132   Max.   : 82.60  
-```
-
-```r
-covid.ssanova <- ssr(differ~lat+lng, data=ndf,
-                  rk=list(tp(list(lat,lng)),
-                          cubic(ww),
-                          rk.prod(tp.linear(list(lat,lng)),cubic(ww)),
-                          rk.prod(tp(list(lat,lng)), cubic(ww))))
-``` 
+$$ 1 - \frac{RSS}{TSS} =  1 - \frac{||X-R||_F^2}{||X_c||_F^2} $$
 
 
 
 ---
-<!-- _class: lead -->
-# Results
-# :bar_chart:
 
----
-```bash
-Smoothing spline regression fit by GCV method
-Call: ssr(formula = differ ~ lat + lng, rk = list(tp(list(lat, lng)), 
-    cubic(ww), rk.prod(tp.linear(list(lat, lng)), cubic(ww)), 
-    rk.prod(tp(list(lat, lng)), cubic(ww))), data = ndf)
-
-Coefficients (d):
-(Intercept)         lat         lng 
-  14.141131  -10.128289   -6.578025 
-
-GCV estimate(s) of smoothing parameter(s) : 3.475394e-08 1.287281e-09 2.536786e-09 3.752565e-11 
-Equivalent Degrees of Freedom (DF):  419.4962 
-Estimate of sigma:  3.887907 
-
-Number of Observations:  986 
-```
-
-
----
-![bg 95%](quarta.jpeg)
-
----
-
-# Locational Effect
-* The difference between two sources is largest in weeks 10-14. 
-* This behavior coincides with the **stay-at-home order** implemented on March 19, 2020 (week 12), which is where we get the maximal spread for the 95% confidence intervals. 
-* We can schematically differentiate between two patterns: 
-    * immediate-response (weeks 10-14)  
-    * normalization (15-25).  
-
----
-<!-- ![bg 50%](week_effect.PNG) -->
-![bg 100%](week_effect.jpeg)
-
-
----
-
-# Temporal Effect
-* The maps show the effect of week (when compared to the overall average of all other weeks). Strong effect is evident in weeks 10-16, with a somewhat less attenuated influence for weeks 18-22. 
+# Conclusion 
 
 ---
 <!-- _class: lead -->
