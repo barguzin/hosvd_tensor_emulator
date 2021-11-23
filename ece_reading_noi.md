@@ -5,7 +5,7 @@ author: Evgeny Noi
 paginate: true
 backgroundColor: #fff
 marp: true
-header: ECE 598BB 
+header: ECE 594BB - Tensor for Emulators - UCSB - 11/23/2021 
 # backgroundImage: url('https://marp.app/assets/hero-background.jpg')
 ---
 <!-- ![bg left:40% 80%](https://marp.app/assets/marp.svg) -->
@@ -17,7 +17,6 @@ header: ECE 598BB
 
 ### Evgeny Noi
 
-noi@ucsb.edu
 *UC Santa Barbara, Department of Geography*
 
 ![](logo1.png)
@@ -53,7 +52,9 @@ noi@ucsb.edu
 
 # Emulators 
 
-> Emulator is a function that mimics the output of a simulator at a fraction of simulator's cost. Most frequently specified by Gaussian Processes, polynomial basis expansions, and non-linear surrogate models. Can we infer unknown calibration parameters from noisy indirect observation of system states at discrete spatial locations? 
+> Emulator is a function that mimics the output of a simulator at a fraction of simulator's cost. The function is most frequently specified by Gaussian Processes, polynomial basis expansions, and non-linear surrogate models. 
+
+### Can we infer unknown calibration parameters from noisy indirect observation of system states at discrete spatial locations? 
 
 <!-- * Projecting the output onto a standard basis representation (principal components) and adapting emulators to lower-dimensional projection of these fields.  -->
 
@@ -75,13 +76,12 @@ We model a state $x(s; \theta)$ at spatiotemporal locations $s_i \in S$ and unkn
 
 ---
 
+* $u$ - refers to $u$-th realization from multistate stochastic simulation 
+* $k$ - refers to $k$-th state ouptut from multistate stochastic simulation 
 * $i$ - denotes $i$-th output grid setting
 * $j$ - refers to $j$-th setting of the calibration parameter vector 
-* $k$ - refers to $k$-th state ouptut from multistate stochastic simulation 
-* $u$ - refers to $u$-th realization from multistate stochastic simulation 
-* $n$ - number of locations 
-* $p$ - number of variables
-* $x_k(s_i, \theta_j)$
+* $n$ - number of locations, $p$ - number of variables, $n_S$ - number of states, $N$ - number of simulation realizations (calibrations) using MCMC, 
+* the $u$-th realization of $x_k(s_i, \theta_j)$ for $u=1,..., N$. 
 * tensorized representation: $\mathcal{X} \in R^{m \times n_s \times n \times N} = x_{u,k,i,j}$
 
 
@@ -99,6 +99,11 @@ We model a state $x(s; \theta)$ at spatiotemporal locations $s_i \in S$ and unkn
 $$ [\mathcal{X}]_{u,k,i,j} = \sum_{r_1}^{R} \sum_{r_2}^{R} \sum_{r_3}^{R} \sum_{r_4}^{R} \mathcal{E}_{r_1, r_2, r_3, r_4} a_{u,r_1}^{(1)} a_{k,r_2}^{(2)} a_{i,r_3}^{(3)} a_{j,r_4}^{(4)}$$
 
 where $R_1, R_2, R_3, R_4$ denote the rank of approximation, $\mathcal{E}$ is the $R_1 \times R_2 \times R_3 \times R_4$ core tensor (analogous to diagonal weight matrix in SVD), and $a_{u,r_1}^{(1)} \in A^{(1)}$, is an entry in $N \times R_1$ factor matrix $A^{(1)}$, the analogue of eigenvector in the SVD. The $\mathcal{X}$ is a tensor-variate Gaussian Process. Thus HOSVD decomposes tensor into: A) effects of variability across runs, B) variability across states; C) variability across spatio-temporal grid; D) variability across stochastic realizations of the simulator. 
+
+---
+# Putting it into a tensor 
+
+Left singular vectors of $R_4$ can be seen as arising from latent eigenfunctions that describe the variability of the tensor across the $m$ simulator runs, motivating the use of a Gaussian process prior.  Thus we reconstruct a missing entry in our tensor representation of simulator outputs, the trajectory of the simulator at the unknown calibration parameter setting $\theta$, by modeling the appropriate eigenvectors. 
 
 <!-- $$ C = U D V^T $$ 
 where $C$ is an $M \times N$ matrix (output dims, runs).  
@@ -203,7 +208,7 @@ Calibration parameters: $\theta = (a_1, a_2, t_0, K, \sigma)^T$ - overall temper
 # Conclusion 
 
 * This presentation examplified the usage of tensorization and HOSVD for model calibration in PDE and AB models
-* This statistical framework fits well into Bayesian framework of uncertainty quantification and spatio-temporal modeling
+* In both papers the authors describe procedure for identifying basis vectors via cross-validation/scree plots. However, the higher order orthogonal iteration (HOOI) can help calculate orthonormal basis of the dominant subspace. 
 
 ---
 <!-- _class: lead -->
