@@ -34,8 +34,8 @@ November 23, 2021
 ## Problem 
 * Modeling spatiotemporal processes is **complicated** due to inherent complex ```dependencies``` across time, space and processes themselves (non-linearity, non-stationarity, non-separability). The process cannot be easily speicified as deterministic black-box. How do we add randomness and uncertainty to simulator for *ensemble realizations*?  
 
-## Solution
-* **Emulators** (surrogate statistical model to emulate input-output, which is computationally less expensive to evaluate)
+<!-- ## Solution
+* **Emulators** (surrogate statistical model to emulate input-output, which is computationally less expensive to evaluate) -->
 
 <!-- * Approaches: 
     * physical-statistical models within hierarchical statistical framework (Berliner 2003; Kuhnert 2014)
